@@ -13,7 +13,6 @@ use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::error::Error;
 use std::fmt;
-use std::iter::FromIterator;
 
 struct YoseClient {
     common_headers: HeaderMap,
@@ -80,10 +79,13 @@ fn convert_report_values(mut dict: BTreeMap<String, ReportValue>) -> Option<Repo
         ReportValue::Int(_) => panic!("foo"),
     };
 
-    let values = BTreeMap::from_iter(dict.into_iter().filter_map(|(id, value)| match value {
-        ReportValue::Int(occupancy) => Some((id, occupancy)),
-        _ => None,
-    }));
+    let values = dict
+        .into_iter()
+        .filter_map(|(id, value)| match value {
+            ReportValue::Int(occupancy) => Some((id, occupancy)),
+            _ => None,
+        })
+        .collect();
 
     Some(ReportDate { date, values })
 }
@@ -102,7 +104,7 @@ impl fmt::Display for YosemiteError {
 impl Error for YosemiteError {}
 
 fn common_headers(cookies: &str) -> HeaderMap {
-    let mut header_map = HeaderMap::from_iter(
+    let mut header_map =
         vec![
             (ACCEPT, "*/*"),
             (ACCEPT_LANGUAGE, "en-US,en;q=0.9"),
@@ -118,8 +120,8 @@ fn common_headers(cookies: &str) -> HeaderMap {
             (USER_AGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.69 Safari/537.36"),
         ]
         .into_iter()
-        .map(|(k, v)| (k, HeaderValue::from_static(v))),
-    );
+        .map(|(k, v)| (k, HeaderValue::from_static(v)))
+        .collect::<HeaderMap>();
 
     header_map.insert(COOKIE, HeaderValue::from_str(cookies).unwrap());
 
@@ -135,10 +137,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let trailheads = client.fetch_trailheads().await?.values;
 
-    let regions: HashSet<String> = trailheads
+    let regions = trailheads
         .values()
         .filter_map(|trailhead| trailhead.region.clone())
-        .collect();
+        .collect::<HashSet<String>>();
 
     let reports = futures::future::join_all(
         regions
